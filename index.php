@@ -21,7 +21,7 @@ $di = new FactoryDefault();
 $di->set('db', function() {
     return new PdoMysql(
         array(
-            "host"      => "localhost",
+            "host"      => "127.0.0.1",
             "username"  => "root",
             "password"  => "0000",
             "dbname"    => "phalcapi"
@@ -210,8 +210,46 @@ $app->put('/api/robots/{id:[0-9]+}', function($id) use ($app) {
 });
 
 // Deletes robots based on primary key
-$app->delete('/api/robots/{id:[0-9]+}', function() {
+$app->delete('/api/robots/{id:[0-9]+}', function ($id) use ($app) {
 
+    $phql = "DELETE FROM Robots WHERE id = :id:";
+    $status = $app->modelsManager->executeQuery($phql, array(
+        'id' => $id
+    ));
+
+    // Create a response
+    $response = new Response();
+
+    if ($status->success() == true) {
+        $response->setJsonContent(
+            array(
+                'status' => 'OK'
+            )
+        );
+    } else {
+
+        // Change the HTTP status
+        $response->setStatusCode(409, "Conflict");
+
+        $errors = array();
+        foreach ($status->getMessages() as $message) {
+            $errors[] = $message->getMessage();
+        }
+
+        $response->setJsonContent(
+            array(
+                'status'   => 'ERROR',
+                'messages' => $errors
+            )
+        );
+    }
+
+    return $response;
+});
+
+$app->notFound(function () use ($app) {
+    $app->response->setStatusCode(404, "Not Found")->sendHeaders();
+    echo 'This is crazy, but this page was not found!';
 });
 
 $app->handle();
