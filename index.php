@@ -110,8 +110,57 @@ $app->get('/api/robots/{id:[0-9]+}', function($id) use ($app) {
 });
 
 // Add a new robot
-$app->post('/api/robots', function() {
+$app->post('/api/robots', function() use ($app) {
 
+    $robot = $app->request->getJsonRawBody();
+
+    $phql = "INSERT INTO Robots (name, type, year) VALUES (:name:, :type:, :year:)";
+
+    $status = $app->modelsManager->executeQuery($phql, array(
+        'name'  => $robot->name,
+        'type'  => $robot->type,
+        'year'  => $robot->year
+    ));
+
+    // Create a response
+    $response = new Response();
+
+    // Check if the insertion was succesful
+    if ($status->success == true) {
+
+        // Change the HTTP status
+        $response->setStatusCode(201, "Created");
+
+        $robot->id = $status->getModel()->id;
+
+        $response->setJsonContent(
+            array(
+                'status'    => 'OK',
+                'data'      => $robot
+            )
+        );
+    }
+    else {
+
+        // Change the HTTP status
+        $response->setStatusCode(409, "Conflict");
+
+        // Send errors to the client
+        $errors = array();
+
+        foreach ($status->getMessage() as $message) {
+            $errors[] = $message->getMessage();
+        }
+
+        $response->setJsonContent(
+            array(
+                'status'    => 'ERROR',
+                'messages'  => $errors
+            )
+        );
+    }
+
+    return $response;
 });
 
 // Updates robots based on primary key
