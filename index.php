@@ -164,8 +164,49 @@ $app->post('/api/robots', function() use ($app) {
 });
 
 // Updates robots based on primary key
-$app->put('/api/robots/{id:[0-9]+}', function() {
+$app->put('/api/robots/{id:[0-9]+}', function($id) use ($app) {
 
+    $robot = $app->request->getJsonRawBody();
+
+    $phql = "UPDATE Robots SET name = :name:, type = :type:, year = :year: WHERE id = :id:";
+
+    $status = $app->modelsManager->executeQuery($phql, array(
+        'id'    => $id,
+        'name'  => $robot->name,
+        'type'  => $robot->type,
+        'year'  => $robot->year
+    ));
+
+    // Create a response
+    $response = new Response();
+
+    // Check if the insertion was succesful
+    if ($status->success() == true) {
+        $response->setJsonContent(
+            array(
+                'status'    => 'OK'
+            )
+        );
+    }
+    else {
+        // Change the HTTP status
+        $response->setStatusCode(409, "Conflict");
+
+        $errors = array();
+
+        foreach ($status->getMessage() as $message) {
+            $errors[] = $message->getMessage();
+        }
+
+        $response->setJsonContent(
+            array(
+                'status'    => 'ERROR',
+                'messages'  => $errors
+            )
+        );
+    }
+
+    return $response;
 });
 
 // Deletes robots based on primary key
